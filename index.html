@@ -351,7 +351,7 @@
                     contenedor.appendChild(divSeparador);
                 }
 
-                const bloqueadoPorTiempo = diferenciaMinutos <= 30;
+                const bloqueadoPorTiempo = diferenciaMinutos <= 15;
                 const yaApostó = partidosApostados.includes(partido.id);
                 const desactivarControles = bloqueadoPorTiempo || yaApostó;
 
@@ -359,7 +359,7 @@
                 let estiloBoton = "background-color: #10b981;";
 
                 if (bloqueadoPorTiempo) {
-                    textoBoton = "🔒 Bloqueado (-30 min)";
+                    textoBoton = "🔒 Bloqueado (-15 min)";
                     estiloBoton = "background-color: #64748b; cursor: not-allowed;";
                 } else if (yaApostó) {
                     textoBoton = "✓ Apuesta Enviada";
