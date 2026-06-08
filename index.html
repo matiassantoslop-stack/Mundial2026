@@ -129,12 +129,49 @@
             text-align: right;
             margin-bottom: 5px;
         }
+
+        /* ESTILOS PARA EL HISTORIAL */
+        #contenedor-historial {
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            margin: 15px 0 25px 0;
+        }
+        #contenedor-historial table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #contenedor-historial thead tr {
+            background: #e2e8f0;
+            font-size: 12px;
+        }
+        #contenedor-historial th {
+            padding: 8px 5px;
+            color: #334155;
+            font-weight: 600;
+        }
+        #contenedor-historial tbody tr {
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+        }
+        #contenedor-historial tbody tr:last-child {
+            border-bottom: none;
+        }
+        #contenedor-historial tbody tr:hover {
+            background-color: #f1f5f9;
+        }
+        #lista-historial td {
+            padding: 8px 5px;
+        }
+        .pts-exacto { color: #10b981; font-weight: bold; }
+        .pts-acierto { color: #3182ce; font-weight: bold; }
+        .pts-cero { color: #e53e3e; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="contenedor">
-        <h1>🏆 La gran polla 2026 🏆</h1>
+        <h1>🏆 La Gran Polla 2026 🏆</h1>
         <div id="pantalla-login">
             <h3>¿Quién eres?</h3>
             <select id="lista-usuarios">
@@ -169,6 +206,22 @@
                 <tbody id="lista-ranking">
                 </tbody>
             </table>
+
+            <!-- HISTORIAL DE PRONÓSTICOS -->
+            <h3>📜 Historial de Mis Pronósticos</h3>
+            <div id="contenedor-historial">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; padding-left: 10px;">Partido</th>
+                            <th>Pronóstico</th>
+                            <th>Real</th>
+                            <th>Pts</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-historial"></tbody>
+                </table>
+            </div>
             
             <div style="background: #edf2f7; padding: 15px; border-radius: 8px; margin-bottom: 25px; text-align: left; font-size: 14px; color: #2d3748;">
                 <h3 style="margin-top: 0; color: #1a365d;">📝 Cómo jugar</h3>
@@ -267,6 +320,7 @@
 
                 cargarRankingPosiciones();
                 cargarPartidosDisponibles();
+                cargarHistorial(); // ← NUEVO
             } else {
                 alert("PIN incorrecto. ¡Inténtalo de nuevo!");
             }
@@ -305,6 +359,64 @@
                 tablaBody.appendChild(tr);
             });
         }
+
+        // ── NUEVO: Historial de pronósticos ────────────────────────────────────
+        async function cargarHistorial() {
+            const { data: historial, error } = await supabaseClient
+                .from('predicciones')
+                .select(`
+                    goles_a_apuesta, goles_b_apuesta,
+                    partidos(equipo_a, equipo_b, goles_a_real, goles_b_real, estado)
+                `)
+                .eq('user_id', usuarioLogueadoId);
+
+            const tbody = document.getElementById('lista-historial');
+            tbody.innerHTML = "";
+
+            if (error) {
+                console.error("Error al cargar el historial:", error);
+                tbody.innerHTML = `<tr><td colspan="4" style="padding: 12px; color: #e53e3e;">Error al cargar historial.</td></tr>`;
+                return;
+            }
+
+            const finalizados = historial.filter(p => p.partidos && p.partidos.estado === 'finished');
+
+            if (finalizados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="padding: 12px; color: #64748b; font-style: italic;">Aún no hay partidos finalizados con tus pronósticos.</td></tr>`;
+                return;
+            }
+
+            finalizados.forEach(p => {
+                const realA    = p.partidos.goles_a_real;
+                const realB    = p.partidos.goles_b_real;
+                const apuestaA = p.goles_a_apuesta;
+                const apuestaB = p.goles_b_apuesta;
+
+                let pts = 0;
+                let clsPts = 'pts-cero';
+                let emoji = '❌';
+
+                if (apuestaA === realA && apuestaB === realB) {
+                    pts = 3; clsPts = 'pts-exacto'; emoji = '🎯';
+                } else if (
+                    (apuestaA > apuestaB && realA > realB) ||
+                    (apuestaA < apuestaB && realA < realB) ||
+                    (apuestaA === apuestaB && realA === realB)
+                ) {
+                    pts = 1; clsPts = 'pts-acierto'; emoji = '⚽';
+                }
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="padding: 8px 5px; text-align: left; padding-left: 10px;">${p.partidos.equipo_a} vs ${p.partidos.equipo_b}</td>
+                        <td style="padding: 8px 5px;">${apuestaA}-${apuestaB}</td>
+                        <td style="padding: 8px 5px;"><strong>${realA}-${realB}</strong></td>
+                        <td style="padding: 8px 5px;"><span class="${clsPts}">${emoji} ${pts}</span></td>
+                    </tr>
+                `;
+            });
+        }
+        // ───────────────────────────────────────────────────────────────────────
 
         async function cargarPartidosDisponibles() {
             const { data: partidos, error: errorPartidos } = await supabaseClient
