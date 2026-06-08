@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polla Mundial 2026 ⚽</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .contenedor {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 480px;
+            text-align: center;
+        }
+        h1 { color: #1a365d; margin-bottom: 25px; }
+        select, input, button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        button {
+            background-color: #3182ce;
+            color: white;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:hover { background-color: #2b6cb0; }
+        .oculto { display: none; }
+        
+        /* ESTILOS PARA EL RANKING */
+        .tabla-ranking {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            background: #f8fafc;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+        .tabla-ranking th, .tabla-ranking td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .tabla-ranking th {
+            background-color: #1a365d;
+            color: white;
+            font-size: 14px;
+        }
+        .tabla-ranking tr:hover { background-color: #f1f5f9; }
+        
+        .separador-dia {
+            background: #e2e8f0;
+            color: #334155;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: left;
+            padding: 8px 15px;
+            margin: 25px 0 10px 0;
+            border-radius: 6px;
+            text-transform: capitalize;
+        }
+        .tarjeta-partido {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        .fila-equipos {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            margin-top: 5px;
+        }
+        .bloque-equipo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 35%;
+        }
+        .bloque-equipo span {
+            font-size: 14px;
+            margin-top: 6px;
+            word-break: break-word;
+        }
+        .bandera {
+            width: 45px;
+            height: 30px;
+            object-fit: cover;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 1px solid #cbd5e1;
+        }
+        .bloque-goles {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 30%;
+        }
+        .input-goles {
+            width: 50px !important;
+            text-align: center;
+            padding: 6px !important;
+            margin: 0 4px !important;
+            font-weight: bold;
+        }
+        .hora-texto {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: bold;
+            text-align: right;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="contenedor">
+        <h1>🏆 Mundial 2026</h1>
+
+        <div id="pantalla-login">
+            <h3>¿Quién eres?</h3>
+            <select id="lista-usuarios">
+                <option value="">Selecciona tu nombre...</option>
+            </select>
+
+            <input type="password" id="input-pin" placeholder="Ingresa tu PIN de 4 dígitos" maxlength="4">
+            
+            <button onclick="intentarIngresar()">Entrar a la Cancha</button>
+        </div>
+
+        <div id="pantalla-dashboard" class="oculto">
+            <h2>¡Hola, <span id="nombre-usuario"></span>! 👋</h2>
+            
+            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+            <h3>📊 Tabla de Posiciones</h3>
+            <table class="tabla-ranking">
+                <thead>
+                    <tr>
+                        <th style="width: 10%">Pos</th>
+                        <th style="text-align: left; padding-left: 10px;">Jugador</th>
+                        <th style="width: 10%">PJ</th>
+                        <th style="width: 12%">🎯</th>
+                        <th style="width: 12%">⚽</th>
+                        <th style="width: 12%">❌</th>
+                        <th style="width: 22%">Total</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-ranking">
+                </tbody>
+            </table>
+            
+            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+            <h3>⚽ Pronósticos Disponibles</h3>
+            <div id="contenedor-partidos"></div> 
+            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+
+            <button onclick="cerrarSesion()" style="background-color: #e53e3e; margin-top: 10px;">Cerrar Sesión</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+        const SUPABASE_URL = 'https://hrxioyykhabudmjyqjub.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyeGlveXlraGFidWRtanlxanViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MjAyNDUsImV4cCI6MjA5NjQ5NjI0NX0.1yCB3OJ6thYRCBTfS5w_kx5dGbcdeVnPu1aEMKf5ogw';
+        
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let usuarioLogueadoId = null;
+
+        const diccionarioBanderas = {
+            "alemania": "de", "angola": "ao", "arabia saudita": "sa", "arabia saudí": "sa", "argelia": "dz",
+            "argentina": "ar", "australia": "au", "austria": "at", "bélgica": "be", "belgica": "be", 
+            "brasil": "br", "camerún": "cm", "camerun": "cm", "canadá": "ca", "canada": "ca", 
+            "chile": "cl", "colombia": "co", "corea del sur": "kr", "república de corea": "kr", 
+            "costa de marfil": "ci", "costa rica": "cr", "croacia": "hr", "dinamarca": "dk", 
+            "ecuador": "ec", "egipto": "eg", "escocia": "gb-sct", "españa": "es", "espana": "es", 
+            "estados unidos": "us", "francia": "fr", "gales": "gb-wls", "ghana": "gh", 
+            "países bajos": "nl", "paises bajos": "nl", "holanda": "nl", "inglaterra": "gb-eng", 
+            "irán": "ir", "iran": "ir", "italia": "it", "japón": "jp", "japon": "jp", 
+            "marruecos": "ma", "méxico": "mx", "mexico": "mx", "nigeria": "ng", "nueva zelanda": "nz", 
+            "paraguay": "py", "perú": "pe", "peru": "pe", "polonia": "pl", "portugal": "pt", 
+            "república checa": "cz", "republica checa": "cz", "rumania": "ro", "rusia": "ru", 
+            "senegal": "sn", "serbia": "rs", "suecia": "se", "suiza": "ch", "túnez": "tn", 
+            "tunez": "tn", "ucrania": "ua", "uruguay": "uy", "venezuela": "ve", "sudáfrica": "za", 
+            "sudafrica": "za", "bosnia y herzegovina": "ba", "catar": "qa", "haití": "ht", 
+            "haiti": "ht", "turquía": "tr", "turquia": "tr", "curazao": "cw", "cabo verde": "cv", 
+            "irak": "iq", "noruega": "no", "jordania": "jo", "rd congo": "cd", "panamá": "pa", 
+            "panama": "pa", "uzbekistán": "uz", "uzbekistan": "uz"
+        };
+
+        function obtenerUrlBandera(nombrePais) {
+            const nombreLimpio = nombrePais.toLowerCase().trim();
+            const codigo = diccionarioBanderas[nombreLimpio] || "un";
+            return `https://flagcdn.com/w80/${codigo}.png`;
+        }
+
+        window.onload = async function() {
+            const { data: listaUsuarios, error } = await supabaseClient
+                .from('usuarios')
+                .select('id, nombre');
+
+            if (error) {
+                console.error("Error al cargar usuarios:", error);
+                return;
+            }
+
+            const selector = document.getElementById('lista-usuarios');
+            listaUsuarios.forEach(usuario => {
+                const opcion = document.createElement('option');
+                opcion.value = usuario.id;
+                opcion.textContent = usuario.nombre;
+                selector.appendChild(opcion);
+            });
+        };
+
+        async function intentarIngresar() {
+            const idSeleccionado = document.getElementById('lista-usuarios').value;
+            const pinIngresado = document.getElementById('input-pin').value;
+
+            if (!idSeleccionado || !pinIngresado) {
+                alert("Por favor, selecciona tu nombre e ingresa tu PIN.");
+                return;
+            }
+
+            const { data: usuarioEncontrado, error } = await supabaseClient
+                .from('usuarios')
+                .select('*')
+                .eq('id', idSeleccionado)
+                .eq('pin', pinIngresado);
+
+            if (usuarioEncontrado && usuarioEncontrado.length > 0) {
+                usuarioLogueadoId = idSeleccionado;
+                const nombreUsuario = usuarioEncontrado[0].nombre;
+
+                document.getElementById('pantalla-login').classList.add('oculto');
+                document.getElementById('pantalla-dashboard').classList.remove('oculto');
+                document.getElementById('nombre-usuario').textContent = nombreUsuario;
+
+                cargarRankingPosiciones();
+                cargarPartidosDisponibles();
+            } else {
+                alert("PIN incorrecto. ¡Inténtalo de nuevo!");
+            }
+        }
+
+        async function cargarRankingPosiciones() {
+            const { data: ranking, error } = await supabaseClient
+                .from('ranking_detallado')
+                .select('*');
+
+            if (error) {
+                console.error("Error al cargar el ranking:", error);
+                return;
+            }
+
+            const tablaBody = document.getElementById('lista-ranking');
+            tablaBody.innerHTML = "";
+
+            ranking.forEach((fila, indice) => {
+                const tr = document.createElement('tr');
+                
+                let medalla = indice + 1;
+                if (indice === 0) medalla = "🥇";
+                if (indice === 1) medalla = "🥈";
+                if (indice === 2) medalla = "🥉";
+
+                tr.innerHTML = `
+                    <td><strong>${medalla}</strong></td>
+                    <td style="text-align: left; padding-left: 10px;">${fila.nombre}</td>
+                    <td>${fila.partidos_jugados}</td>
+                    <td>${fila.exactos}</td>
+                    <td>${fila.aciertos}</td>
+                    <td>${fila.errados}</td>
+                    <td><strong>${fila.puntos_totales} pts</strong></td>
+                `;
+                tablaBody.appendChild(tr);
+            });
+        }
+
+        async function cargarPartidosDisponibles() {
+            const { data: partidos, error: errorPartidos } = await supabaseClient
+                .from('partidos')
+                .select('*')
+                .eq('estado', 'scheduled')
+                .order('fecha_partido', { ascending: true });
+
+            const { data: misPredicciones, error: errorPredicciones } = await supabaseClient
+                .from('predicciones')
+                .select('partido_id')
+                .eq('user_id', usuarioLogueadoId);
+
+            if (errorPartidos || errorPredicciones) {
+                console.error("Error al cargar la información");
+                return;
+            }
+
+            const partidosApostados = misPredicciones.map(p => p.partido_id);
+            const contenedor = document.getElementById('contenedor-partidos');
+            contenedor.innerHTML = "";
+
+            if (partidos.length === 0) {
+                contenedor.innerHTML = "<p>No hay partidos disponibles por ahora.</p>";
+                return;
+            }
+
+            let ultimoDiaRegistrado = "";
+
+            partidos.forEach(partido => {
+                const ahora = new Date();
+                const horaPartido = new Date(partido.fecha_partido);
+                const diferenciaMinutos = (horaPartido - ahora) / (1000 * 60);
+
+                const textoDiaActual = horaPartido.toLocaleDateString('es-CL', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long'
+                });
+
+                const textoHora = horaPartido.toLocaleTimeString('es-CL', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                if (textoDiaActual !== ultimoDiaRegistrado) {
+                    ultimoDiaRegistrado = textoDiaActual;
+                    const divSeparador = document.createElement('div');
+                    divSeparador.className = 'separador-dia';
+                    divSeparador.innerHTML = `🗓️ ${textoDiaActual}`;
+                    contenedor.appendChild(divSeparador);
+                }
+
+                const bloqueadoPorTiempo = diferenciaMinutos <= 30;
+                const yaApostó = partidosApostados.includes(partido.id);
+                const desactivarControles = bloqueadoPorTiempo || yaApostó;
+
+                let textoBoton = "Guardar Apuesta";
+                let estiloBoton = "background-color: #10b981;";
+
+                if (bloqueadoPorTiempo) {
+                    textoBoton = "🔒 Bloqueado (-30 min)";
+                    estiloBoton = "background-color: #64748b; cursor: not-allowed;";
+                } else if (yaApostó) {
+                    textoBoton = "✓ Apuesta Enviada";
+                    estiloBoton = "background-color: #475569; cursor: not-allowed;";
+                }
+
+                const banderaA = obtenerUrlBandera(partido.equipo_a);
+                const banderaB = obtenerUrlBandera(partido.equipo_b);
+
+                const div = document.createElement('div');
+                div.className = 'tarjeta-partido';
+                div.innerHTML = `
+                    <div class="hora-texto">⏰ ${textoHora} hrs</div>
+                    <div class="fila-equipos">
+                        <div class="bloque-equipo">
+                            <img src="${banderaA}" alt="${partido.equipo_a}" class="bandera">
+                            <span><strong>${partido.equipo_a}</strong></span>
+                        </div>
+                        <div class="bloque-goles">
+                            <input type="number" id="goles-a-${partido.id}" class="input-goles" min="0" placeholder="0" ${desactivarControles ? 'disabled' : ''}>
+                            <span style="color: #64748b; font-weight: bold;">v/s</span>
+                            <input type="number" id="goles-b-${partido.id}" class="input-goles" min="0" placeholder="0" ${desactivarControles ? 'disabled' : ''}>
+                        </div>
+                        <div class="bloque-equipo">
+                            <img src="${banderaB}" alt="${partido.equipo_b}" class="bandera">
+                            <span><strong>${partido.equipo_b}</strong></span>
+                        </div>
+                    </div>
+                    <button onclick="guardarPrediccion(${partido.id})" style="padding: 8px; font-size: 14px; ${estiloBoton}" ${desactivarControles ? 'disabled' : ''}>${textoBoton}</button>
+                `;
+                contenedor.appendChild(div);
+            });
+        }
+
+        async function guardarPrediccion(partidoId) {
+            const golesA = document.getElementById(`goles-a-${partidoId}`).value;
+            const golesB = document.getElementById(`goles-b-${partidoId}`).value;
+
+            if (golesA === "" || golesB === "") {
+                alert("Debes ingresar goles para ambos equipos.");
+                return;
+            }
+
+            const { error } = await supabaseClient
+                .from('predicciones')
+                .insert([
+                    { 
+                        user_id: usuarioLogueadoId, 
+                        partido_id: partidoId, 
+                        goles_a_apuesta: parseInt(golesA), 
+                        goles_b_apuesta: parseInt(golesB) 
+                    }
+                ]);
+
+            if (error) {
+                console.error("Error al guardar la predicción:", error);
+                alert("Hubo un error al guardar tu apuesta.");
+            } else {
+                alert("¡Apuesta guardada con éxito! Ya no podrás modificarla. ⚽🔥");
+                cargarPartidosDisponibles();
+            }
+        }
+
+        function cerrarSesion() {
+            usuarioLogueadoId = null;
+            document.getElementById('pantalla-dashboard').classList.add('oculto');
+            document.getElementById('pantalla-login').classList.remove('oculto');
+            document.getElementById('input-pin').value = '';
+        }
+    </script>
+</body>
+</html>
