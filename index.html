@@ -3,8 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Polla Mundial 2026 ⚽</title>
+    <title>⚽ Polla Mundial 2026 ⚽</title>
     <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 2.0s ease forwards;
+        }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f0f2f5;
@@ -212,7 +219,7 @@
             
             <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
             <h3>📊 Tabla de Posiciones</h3>
-            <table class="tabla-ranking">
+            <table class="tabla-ranking fade-in">
                 <thead>
                     <tr>
                         <th style="width: 8%">Pos</th>
@@ -231,7 +238,7 @@
  
             <!-- HISTORIAL DE PRONÓSTICOS -->
             <h3>📜 Historial de Mis Pronósticos</h3>
-            <div id="contenedor-historial">
+            <div id="contenedor-historial" class="fade-in">
                 <table>
                     <thead>
                         <tr>
@@ -255,7 +262,7 @@
                 </ul>
             </div>
             <h3>⚽ Pronósticos Disponibles</h3>
-            <div id="contenedor-partidos"></div> 
+            <div id="contenedor-partidos" class="fade-in">
             <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
  
             <button onclick="cerrarSesion()" style="background-color: #e53e3e; margin-top: 10px;">Cerrar Sesión</button>
@@ -296,6 +303,20 @@
             const nombreLimpio = nombrePais.toLowerCase().trim();
             const codigo = diccionarioBanderas[nombreLimpio] || "un";
             return `https://flagcdn.com/w80/${codigo}.png`;
+        }
+
+        function formatearContador(ms) {
+            if (ms <= 0) return "🔒 Cerrado";
+            const totalSegundos = Math.floor(ms / 1000);
+            const dias    = Math.floor(totalSegundos / 86400);
+            const horas   = Math.floor((totalSegundos % 86400) / 3600);
+            const minutos = Math.floor((totalSegundos % 3600) / 60);
+            const segundos = totalSegundos % 60;
+
+            if (dias > 0)   return `⏱ Cierra en ${dias}d ${horas}h ${minutos}m`;
+            if (horas > 0)  return `⏱ Cierra en ${horas}h ${minutos}m`;
+            if (minutos > 0) return `⏱ Cierra en ${minutos}m ${segundos}s`;
+            return `⏱ Cierra en ${segundos}s`;
         }
  
         window.onload = async function() {
@@ -363,7 +384,12 @@
  
             ranking.forEach((fila, indice) => {
                 const tr = document.createElement('tr');
-                
+                if (fila.user_id == usuarioLogueadoId) {
+                    tr.style.background = "linear-gradient(90deg, #dbeafe, #eff6ff)";
+                    tr.style.borderLeft = "4px solid #3182ce";
+                    tr.style.color = "#1e40af";
+                }
+
                 let medalla = indice + 1;
                 if (indice === 0) medalla = "🥇";
                 if (indice === 1) medalla = "🥈";
@@ -521,7 +547,7 @@
  
                 const bloqueadoPorTiempo = diferenciaMinutos <= 15;
                 const yaApostó = partidosApostados.includes(partido.id);
-                const desactivarControles = bloqueadoPorTiempo || yaApostó;
+                const desactivarControles = bloqueadoPorTiempo;
  
                 let textoBoton = "Guardar Apuesta";
                 let estiloBoton = "background-color: #10b981;";
@@ -530,8 +556,8 @@
                     textoBoton = "🔒 Bloqueado (-15 min)";
                     estiloBoton = "background-color: #64748b; cursor: not-allowed;";
                 } else if (yaApostó) {
-                    textoBoton = "✓ Apuesta Enviada";
-                    estiloBoton = "background-color: #475569; cursor: not-allowed;";
+                    textoBoton = "✏️ Editar Apuesta";
+                    estiloBoton = "background-color: #f59e0b;";
                 }
  
                 const banderaA = obtenerUrlBandera(partido.equipo_a);
@@ -540,7 +566,7 @@
                 const div = document.createElement('div');
                 div.className = 'tarjeta-partido';
                 div.innerHTML = `
-                    <div class="hora-texto">⏰ ${textoHora} hrs</div>
+                    <div class="hora-texto">⏰ ${textoHora} hrs &nbsp;|&nbsp; <span id="contador-${partido.id}"></span></div>
                     <div class="fila-equipos">
                         <div class="bloque-equipo">
                             <img src="${banderaA}" alt="${partido.equipo_a}" class="bandera">
@@ -560,6 +586,19 @@
                 `;
                 contenedor.appendChild(div);
             });
+                const intervalId = setInterval(() => {
+                partidos.forEach(partido => {
+                const span = document.getElementById(`contador-${partido.id}`);
+                if (!span) {
+                    clearInterval(intervalId);
+                    return;
+                }
+                const ahora = new Date();
+                const horaPartido = new Date(partido.fecha_partido);
+                const msRestantes = horaPartido - ahora - (15 * 60 * 1000);
+                span.textContent = formatearContador(msRestantes);
+            });
+        }, 1000);
         }
  
         async function guardarPrediccion(partidoId) {
@@ -573,20 +612,21 @@
  
             const { error } = await supabaseClient
                 .from('predicciones')
-                .insert([
+                .upsert(
                     { 
                         user_id: usuarioLogueadoId, 
                         partido_id: partidoId, 
                         goles_a_apuesta: parseInt(golesA), 
                         goles_b_apuesta: parseInt(golesB) 
-                    }
-                ]);
+                    },
+                    { onConflict: 'user_id, partido_id' }
+                );
  
             if (error) {
                 console.error("Error al guardar la predicción:", error);
                 alert("Hubo un error al guardar tu apuesta.");
             } else {
-                alert("¡Apuesta guardada con éxito! Ya no podrás modificarla. ⚽🔥");
+                alert("¡Apuesta guardada con éxito! Ya no podrás modificarla después de los -15 min. ⚽🔥");
                 cargarPartidosDisponibles();
             }
         }
