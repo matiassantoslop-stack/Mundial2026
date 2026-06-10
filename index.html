@@ -257,7 +257,7 @@
                 <ul style="padding-left: 20px; margin: 0;">
                     <li>Pronostica los goles de cada equipo.</li>
                     <li>Tienes hasta <b>15 minutos</b> antes del inicio para guardar.</li>
-                    <li>Los puntos se calculan posterior a cada partido.</li>
+                    <li>Los puntos se calculan posterior a cada partido, con 2 puntos por acierto en el resultado y 1 punto por acierto en el ganador</li>
                     <li>¿Transferiste la cuota?.</li>
                 </ul>
             </div>
@@ -414,39 +414,41 @@
                 .from('predicciones')
                 .select(`
                     goles_a_apuesta, goles_b_apuesta,
-                    partidos(equipo_a, equipo_b, goles_a_real, goles_b_real, estado)
+                    partidos(equipo_a, equipo_b, goles_a_real, goles_b_real, estado, fecha_partido)
                 `)
                 .eq('user_id', usuarioLogueadoId);
- 
+
             const tbody = document.getElementById('lista-historial');
             tbody.innerHTML = "";
- 
+
             if (error) {
                 console.error("Error al cargar el historial:", error);
                 tbody.innerHTML = `<tr><td colspan="4" style="padding: 12px; color: #e53e3e;">Error al cargar historial.</td></tr>`;
                 return;
             }
- 
+
             const finalizados = historial.filter(p => p.partidos && p.partidos.estado === 'finished');
             const pendientes  = historial.filter(p => p.partidos && p.partidos.estado === 'scheduled');
- 
+
             if (finalizados.length === 0 && pendientes.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="4" style="padding: 12px; color: #64748b; font-style: italic;">Aún no tienes pronósticos guardados.</td></tr>`;
                 return;
             }
- 
+
             // ── PENDIENTES ──────────────────────────────────────────────────
             if (pendientes.length > 0) {
                 tbody.innerHTML += `
                     <tr class="historial-seccion-header pendiente">
                         <td colspan="4">⏳ Pronósticos pendientes</td>
                     </tr>`;
- 
+
                 pendientes.forEach(p => {
+                    const fecha = new Date(p.partidos.fecha_partido).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
                     tbody.innerHTML += `
                         <tr class="historial-fila-pendiente" style="opacity: 0.75;">
                             <td style="text-align: left; padding-left: 10px;">
-                                ${p.partidos.equipo_a} vs ${p.partidos.equipo_b}
+                                <div>${p.partidos.equipo_a} vs ${p.partidos.equipo_b}</div>
+                                <div style="font-size: 11px; color: #94a3b8;">${fecha}</div>
                             </td>
                             <td>${p.goles_a_apuesta}-${p.goles_b_apuesta}</td>
                             <td style="color: #94a3b8;">—</td>
@@ -454,22 +456,23 @@
                         </tr>`;
                 });
             }
- 
+
             // ── FINALIZADOS ─────────────────────────────────────────────────
             if (finalizados.length > 0) {
                 tbody.innerHTML += `
                     <tr class="historial-seccion-header finalizado">
                         <td colspan="4">✅ Partidos finalizados</td>
                     </tr>`;
- 
+
                 finalizados.forEach(p => {
                     const realA    = p.partidos.goles_a_real;
                     const realB    = p.partidos.goles_b_real;
                     const apuestaA = p.goles_a_apuesta;
                     const apuestaB = p.goles_b_apuesta;
- 
+                    const fecha    = new Date(p.partidos.fecha_partido).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+
                     let pts = 0, clsPts = 'pts-cero', emoji = '❌';
- 
+
                     if (apuestaA === realA && apuestaB === realB) {
                         pts = 2; clsPts = 'pts-exacto'; emoji = '🎯';
                     } else if (
@@ -479,11 +482,12 @@
                     ) {
                         pts = 1; clsPts = 'pts-acierto'; emoji = '⚽';
                     }
- 
+
                     tbody.innerHTML += `
                         <tr>
                             <td style="text-align: left; padding-left: 10px;">
-                                ${p.partidos.equipo_a} vs ${p.partidos.equipo_b}
+                                <div>${p.partidos.equipo_a} vs ${p.partidos.equipo_b}</div>
+                                <div style="font-size: 11px; color: #94a3b8;">${fecha}</div>
                             </td>
                             <td>${apuestaA}-${apuestaB}</td>
                             <td><strong>${realA}-${realB}</strong></td>
